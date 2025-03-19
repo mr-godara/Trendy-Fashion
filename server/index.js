@@ -985,7 +985,7 @@ app.post('/api/payments/verify', auth, async (req, res) => {
     
     // For testing/demo purposes, don't validate signature
     // In production, uncomment this signature validation code
-    /*
+    
     const generatedSignature = crypto
       .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
       .update(orderId + '|' + paymentId)
@@ -996,7 +996,7 @@ app.post('/api/payments/verify', auth, async (req, res) => {
       await order.save();
       return res.status(400).json({ message: 'Invalid signature' });
     }
-    */
+    
     
     // Update order
     order.razorpayPaymentId = paymentId;
