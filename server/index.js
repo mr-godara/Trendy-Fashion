@@ -21,7 +21,25 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 const app = express();
 
 // Middleware
-app.options("*", cors());
+app.use(cors({
+  origin: "https://trendy-fashion-dun.vercel.app", // Allow frontend
+  methods: "GET,POST,PUT,DELETE",
+  credentials: true // Allow cookies & authorization headers
+}));
+
+// ✅ Manually set CORS headers for preflight requests
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "https://trendy-fashion-dun.vercel.app");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Credentials", "true");
+  next();
+});
+
+// ✅ Handle preflight requests
+app.options('*', (req, res) => {
+  res.sendStatus(200);
+});
 
 app.use(express.json());
 
