@@ -938,43 +938,15 @@ app.post('/api/payments/verify', auth, async (req, res) => {
     
     console.log('Payment verification request received for:', { orderId, paymentId });
     
-    // Handle mock order IDs
+    // Find the order using a strict lookup
     let order;
     
-    if (orderId.startsWith('mock_order_') || orderId.startsWith('order_')) {
-      // This is a mock Razorpay order ID - find the order by razorpayOrderId
+    // Only allow orders stored by MongoDB _id
+    if (mongoose.Types.ObjectId.isValid(orderId)) {
       order = await Order.findOne({ 
-        razorpayOrderId: orderId,
+        _id: orderId,
         user: req.user._id 
       });
-    } else {
-      // Try to find by MongoDB ID
-      try {
-        if (mongoose.Types.ObjectId.isValid(orderId)) {
-          order = await Order.findOne({ 
-            _id: orderId,
-            user: req.user._id 
-          });
-        }
-      } catch (idError) {
-        console.error('Error finding order by ID:', idError);
-      }
-    }
-    
-    // If still not found, try a broader search
-    if (!order) {
-      try {
-        // Get the most recent order for this user
-        order = await Order.findOne({ 
-          user: req.user._id
-        }).sort({ createdAt: -1 });
-        
-        if (order) {
-          console.log('Found recent order as fallback:', order._id);
-        }
-      } catch (fallbackError) {
-        console.error('Error in fallback order search:', fallbackError);
-      }
     }
     
     if (!order) {
@@ -983,9 +955,7 @@ app.post('/api/payments/verify', auth, async (req, res) => {
     
     console.log('Order found:', order._id);
     
-    // For testing/demo purposes, don't validate signature
-    // In production, uncomment this signature validation code
-    
+    // Generate and validate the signature using live Razorpay keys
     const generatedSignature = crypto
       .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
       .update(orderId + '|' + paymentId)
@@ -997,8 +967,7 @@ app.post('/api/payments/verify', auth, async (req, res) => {
       return res.status(400).json({ message: 'Invalid signature' });
     }
     
-    
-    // Update order
+    // Update order details upon successful verification
     order.razorpayPaymentId = paymentId;
     order.razorpaySignature = signature;
     order.paymentStatus = 'paid';
@@ -1013,6 +982,7 @@ app.post('/api/payments/verify', auth, async (req, res) => {
     res.status(500).json({ message: 'Server error: ' + error.message });
   }
 });
+
 
 // Serve React app for all other routes
 app.get('*', (req, res) => {
